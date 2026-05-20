@@ -8,6 +8,8 @@ import { getScreenTheme } from "@/lib/renderers/screen/themes";
 import { summaryEntry } from "@/lib/sections/summary";
 import { PersonalInfoForm, PersonalInfoScreen } from "@/lib/sections/personal-info";
 import { experienceEntry } from "@/lib/sections/experience";
+import { educationEntry } from "@/lib/sections/education";
+import { skillsEntry } from "@/lib/sections/skills";
 import { getTabStatuses, canExport, type TabId } from "@/lib/sections/completion";
 
 export default function CVBuilderPage() {
@@ -30,11 +32,25 @@ export default function CVBuilderPage() {
     experienceSectionIndex >= 0 && data.sections[experienceSectionIndex].type === "experience"
       ? data.sections[experienceSectionIndex]
       : null;
+      const educationSectionIndex = data.sections.findIndex((s) => s.type === "education");
+  const educationSection =
+    educationSectionIndex >= 0 && data.sections[educationSectionIndex].type === "education"
+      ? data.sections[educationSectionIndex]
+      : null;
+      const skillsSectionIndex = data.sections.findIndex((s) => s.type === "skills");
+  const skillsSection =
+    skillsSectionIndex >= 0 && data.sections[skillsSectionIndex].type === "skills"
+      ? data.sections[skillsSectionIndex]
+      : null;
 
   const SummaryForm = summaryEntry.formComponent;
   const SummaryScreen = summaryEntry.screenComponent;
   const ExperienceForm = experienceEntry.formComponent;
   const ExperienceScreen = experienceEntry.screenComponent;
+  const EducationForm = educationEntry.formComponent;
+  const EducationScreen = educationEntry.screenComponent;
+  const SkillsForm = skillsEntry.formComponent;
+  const SkillsScreen = skillsEntry.screenComponent;
 
   const tabStatuses = getTabStatuses(data);
   const filledCount = tabStatuses.filter((t) => t.filled).length;
@@ -60,6 +76,8 @@ export default function CVBuilderPage() {
               <PersonalInfoScreen data={data.personalInfo} theme={theme} />
               {summarySection && <SummaryScreen section={summarySection} theme={theme} />}
               {experienceSection && <ExperienceScreen section={experienceSection} theme={theme} />}
+              {educationSection && <EducationScreen section={educationSection} theme={theme} />}
+              {skillsSection && <SkillsScreen section={skillsSection} theme={theme} />}
             </div>
           </div>
         </section>
@@ -134,14 +152,14 @@ export default function CVBuilderPage() {
                 )}
               </Tabs.Content>
               <Tabs.Content value="education" className="outline-none">
-                <p className="text-[12.5px] text-ink-faint italic">
-                  Education section — coming next.
-                </p>
+                {educationSection && educationSectionIndex >= 0 && (
+                  <EducationForm form={form} sectionIndex={educationSectionIndex} />
+                )}
               </Tabs.Content>
               <Tabs.Content value="skills" className="outline-none">
-                <p className="text-[12.5px] text-ink-faint italic">
-                  Skills section — coming next.
-                </p>
+                {skillsSection && skillsSectionIndex >= 0 && (
+                  <SkillsForm form={form} sectionIndex={skillsSectionIndex} />
+                )}
               </Tabs.Content>
             </div>
           </Tabs.Root>
