@@ -3,6 +3,7 @@
 import { useCVForm } from "@/lib/store";
 import { getScreenTheme } from "@/lib/renderers/screen/themes";
 import { summaryEntry } from "@/lib/sections/summary";
+import { PersonalInfoForm, PersonalInfoScreen } from "@/lib/sections/personal-info";
 
 export default function CVBuilderPage() {
   const { form, isMounted } = useCVForm();
@@ -12,7 +13,10 @@ export default function CVBuilderPage() {
   const data = form.watch();
   const theme = getScreenTheme(data.theme);
   const summarySectionIndex = data.sections.findIndex((s) => s.type === "summary");
-  const summarySection = data.sections[summarySectionIndex];
+  const summarySection =
+    summarySectionIndex >= 0 && data.sections[summarySectionIndex].type === "summary"
+      ? data.sections[summarySectionIndex]
+      : null;
 
   const SummaryForm = summaryEntry.formComponent;
   const SummaryScreen = summaryEntry.screenComponent;
@@ -34,11 +38,7 @@ export default function CVBuilderPage() {
 
           <div className="bg-paper border border-hairline rounded-sm p-14 shadow-[0_12px_32px_-16px_rgba(58,52,30,0.18)]">
             <div className={theme.pageClass}>
-              <header className={theme.headerClass}>
-                <div className={theme.nameClass}>
-                  {data.personalInfo.fullName || "Your Name"}
-                </div>
-              </header>
+              <PersonalInfoScreen data={data.personalInfo} theme={theme} />
 
               {summarySection && (
                 <SummaryScreen section={summarySection} theme={theme} />
@@ -56,9 +56,12 @@ export default function CVBuilderPage() {
             </p>
           </div>
 
-          {summarySection && summarySectionIndex >= 0 && (
-            <SummaryForm form={form} sectionIndex={summarySectionIndex} />
-          )}
+          <div className="space-y-5">
+            <PersonalInfoForm form={form} />
+            {summarySection && summarySectionIndex >= 0 && (
+              <SummaryForm form={form} sectionIndex={summarySectionIndex} />
+            )}
+          </div>
         </section>
 
       </div>
