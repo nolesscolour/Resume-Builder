@@ -44,7 +44,7 @@ function EducationForm({ form, sectionIndex }: SectionFormProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center sticky top-0 bg-panel py-2 z-10 -mx-1 px-1">
         <h2 className="font-mono text-[11px] tracking-[0.08em] text-ink-mid uppercase">
           / Education
         </h2>
@@ -161,14 +161,14 @@ function EduCard({
         </button>
       </div>
 
-      <FieldRow label="School">
+      <FieldRow label="School" required>
         <input
           {...form.register(`sections.${sectionIndex}.data.items.${eduIndex}.school`)}
           placeholder="National Institute of Design"
           className={inputClass}
         />
       </FieldRow>
-      <FieldRow label="Degree">
+      <FieldRow label="Degree" required>
         <input
           {...form.register(`sections.${sectionIndex}.data.items.${eduIndex}.degree`)}
           placeholder="B.Des"
@@ -222,16 +222,21 @@ function FieldRow({
   label,
   children,
   last,
+  required,
 }: {
   label: string;
   children: React.ReactNode;
   last?: boolean;
+  required?: boolean;
 }) {
   return (
     <div
       className={`grid grid-cols-[96px_1fr] items-center ${last ? "" : "border-b border-hairline"} focus-within:bg-ivory-warm transition-colors`}
     >
-      <label className="text-[13px] text-ink-soft px-4 py-3.5 font-medium">{label}</label>
+      <label className="text-[13px] text-ink-soft px-4 py-3.5 font-medium">
+        {label}
+        {required && <span className="text-red-600 ml-0.5">*</span>}
+      </label>
       {children}
     </div>
   );

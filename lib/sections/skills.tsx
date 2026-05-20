@@ -45,7 +45,7 @@ function SkillsForm({ form, sectionIndex }: SectionFormProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center sticky top-0 bg-panel py-2 z-10 -mx-1 px-1">
         <h2 className="font-mono text-[11px] tracking-[0.08em] text-ink-mid uppercase">
           / Skills
         </h2>

@@ -91,7 +91,15 @@ export function useCVForm() {
     return () => sub.unsubscribe();
   }, [form, isMounted]);
 
-  return { form, isMounted };
+  function resetForm() {
+    const fresh = makeDefaultCV();
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+    form.reset(fresh);
+  }
+
+  return { form, isMounted, resetForm };
 }
 
 export { makeDefaultCV, makeDefaultSections };

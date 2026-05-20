@@ -10,7 +10,7 @@ import type { ScreenTheme } from "./types";
 export function PersonalInfoForm({ form }: { form: UseFormReturn<CVData> }) {
   return (
     <div className="border border-hairline rounded-md bg-paper overflow-hidden">
-      <Row label="Full name">
+      <Row label="Full name" required>
         <input
           type="text"
           {...form.register("personalInfo.fullName")}
@@ -18,7 +18,7 @@ export function PersonalInfoForm({ form }: { form: UseFormReturn<CVData> }) {
           className={inputClass}
         />
       </Row>
-      <Row label="Email">
+      <Row label="Email" required>
         <input
           type="email"
           {...form.register("personalInfo.email")}
@@ -26,7 +26,7 @@ export function PersonalInfoForm({ form }: { form: UseFormReturn<CVData> }) {
           className={inputClass}
         />
       </Row>
-      <Row label="Phone">
+      <Row label="Phone" required>
         <input
           type="tel"
           {...form.register("personalInfo.phone")}
@@ -34,7 +34,7 @@ export function PersonalInfoForm({ form }: { form: UseFormReturn<CVData> }) {
           className={inputClass}
         />
       </Row>
-      <Row label="Location">
+      <Row label="Location" required>
         <input
           type="text"
           {...form.register("personalInfo.location")}
@@ -70,12 +70,15 @@ export function PersonalInfoForm({ form }: { form: UseFormReturn<CVData> }) {
   );
 }
 
-function Row({ label, last, children }: { label: string; last?: boolean; children: React.ReactNode }) {
+function Row({ label, last, required, children }: { label: string; last?: boolean; required?: boolean; children: React.ReactNode }) {
   return (
     <div
       className={`grid grid-cols-[96px_1fr] items-center ${last ? "" : "border-b border-hairline"} focus-within:bg-ivory-warm transition-colors`}
     >
-      <label className="text-[13px] text-ink-soft px-4 py-3.5 font-medium">{label}</label>
+      <label className="text-[13px] text-ink-soft px-4 py-3.5 font-medium">
+        {label}
+        {required && <span className="text-red-600 ml-0.5">*</span>}
+      </label>
       {children}
     </div>
   );
