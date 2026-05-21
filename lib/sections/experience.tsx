@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useFieldArray } from "react-hook-form";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, GripVertical, ChevronDown } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -12,7 +13,6 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
@@ -24,11 +24,39 @@ import type { SectionByType } from "@/lib/schema";
 
 type ExperienceSection = SectionByType<"experience">;
 
+function makeEmptyJob() {
+  return {
+    id: crypto.randomUUID(),
+    company: "",
+    role: "",
+    location: "",
+    startDate: "",
+    endDate: "",
+    current: false,
+    bullets: [],
+  };
+}
+
 function ExperienceForm({ form, sectionIndex }: SectionFormProps) {
   const { fields, append, remove, move } = useFieldArray({
     control: form.control,
     name: `sections.${sectionIndex}.data.items` as const,
   });
+
+  const [expandedIndex, setExpandedIndex] = useState<number>(0);
+  const hasAutoAdded = useRef(false);
+
+  // Auto-add one empty entry if list is empty
+  useEffect(() => {
+    if (fields.length === 0 && !hasAutoAdded.current) {
+      hasAutoAdded.current = true;
+      append(makeEmptyJob());
+      setExpandedIndex(0);
+    } else if (fields.length > 0 && expandedIndex >= fields.length) {
+      setExpandedIndex(fields.length - 1);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields.length]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -40,8 +68,33 @@ function ExperienceForm({ form, sectionIndex }: SectionFormProps) {
     if (!over || active.id === over.id) return;
     const oldIndex = fields.findIndex((f) => f.id === active.id);
     const newIndex = fields.findIndex((f) => f.id === over.id);
-    if (oldIndex >= 0 && newIndex >= 0) move(oldIndex, newIndex);
+    if (oldIndex >= 0 && newIndex >= 0) {
+      move(oldIndex, newIndex);
+      if (expandedIndex === oldIndex) setExpandedIndex(newIndex);
+      else if (expandedIndex === newIndex) setExpandedIndex(oldIndex);
+    }
   }
+
+  function handleAdd() {
+    append(makeEmptyJob());
+    setExpandedIndex(fields.length); // new index will be the current length
+  }
+
+  function handleRemove(index: number) {
+    if (fields.length === 1) {
+      const empty = makeEmptyJob();
+      form.setValue(`sections.${sectionIndex}.data.items.${index}` as const, empty, {
+        shouldDirty: true,
+      });
+      setExpandedIndex(0);
+    } else {
+      remove(index);
+      if (expandedIndex === index) setExpandedIndex(0);
+      else if (expandedIndex > index) setExpandedIndex(expandedIndex - 1);
+    }
+  }
+
+  const collapsible = fields.length > 1;
 
   return (
     <div className="space-y-4">
@@ -51,29 +104,12 @@ function ExperienceForm({ form, sectionIndex }: SectionFormProps) {
         </h2>
         <button
           type="button"
-          onClick={() =>
-            append({
-              id: crypto.randomUUID(),
-              company: "",
-              role: "",
-              location: "",
-              startDate: "",
-              endDate: "",
-              current: false,
-              bullets: [],
-            })
-          }
+          onClick={handleAdd}
           className="inline-flex items-center gap-1.5 border border-dashed border-hairline-strong text-ink-soft text-[12px] px-2.5 py-1.5 rounded-sm hover:border-ink-mid hover:text-ink transition-colors"
         >
           <Plus className="w-3 h-3" /> Add job
         </button>
       </div>
-
-      {fields.length === 0 && (
-        <p className="text-[12.5px] text-ink-faint italic px-1">
-          No jobs added yet.
-        </p>
-      )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
@@ -85,7 +121,10 @@ function ExperienceForm({ form, sectionIndex }: SectionFormProps) {
                 form={form}
                 sectionIndex={sectionIndex}
                 jobIndex={index}
-                onRemove={() => remove(index)}
+                isExpanded={expandedIndex === index}
+                collapsible={collapsible}
+                onToggle={() => setExpandedIndex(expandedIndex === index ? -1 : index)}
+                onRemove={() => handleRemove(index)}
               />
             ))}
           </div>
@@ -100,6 +139,9 @@ function SortableJobCard(props: {
   form: SectionFormProps["form"];
   sectionIndex: number;
   jobIndex: number;
+  isExpanded: boolean;
+  collapsible: boolean;
+  onToggle: () => void;
   onRemove: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -124,6 +166,9 @@ function JobCard({
   form,
   sectionIndex,
   jobIndex,
+  isExpanded,
+  collapsible,
+  onToggle,
   onRemove,
   dragAttributes,
   dragListeners,
@@ -131,6 +176,9 @@ function JobCard({
   form: SectionFormProps["form"];
   sectionIndex: number;
   jobIndex: number;
+  isExpanded: boolean;
+  collapsible: boolean;
+  onToggle: () => void;
   onRemove: () => void;
   dragAttributes?: React.HTMLAttributes<HTMLButtonElement>;
   dragListeners?: React.DOMAttributes<HTMLButtonElement>;
@@ -141,111 +189,139 @@ function JobCard({
     name: bulletsPath,
   });
 
+  const company = form.watch(`sections.${sectionIndex}.data.items.${jobIndex}.company` as const);
+  const role = form.watch(`sections.${sectionIndex}.data.items.${jobIndex}.role` as const);
+
+  const summaryTitle =
+    [company, role].filter((s) => s && s.trim()).join(" — ") || `Job #${jobIndex + 1}`;
+
   return (
     <div className="border border-hairline rounded-md bg-paper overflow-hidden">
-      <div className="flex justify-between items-center px-2 py-2 border-b border-hairline bg-ivory-warm/30">
-        <div className="flex items-center gap-1">
+      <div
+        className={`flex justify-between items-center px-2 py-2 border-b border-hairline bg-ivory-warm/30 ${
+          collapsible ? "cursor-pointer" : ""
+        }`}
+        onClick={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest("button[data-no-toggle]")) return;
+          if (collapsible) onToggle();
+        }}
+      >
+        <div className="flex items-center gap-1 min-w-0 flex-1">
           <button
             type="button"
             aria-label="Drag to reorder"
-            className="cursor-grab active:cursor-grabbing text-ink-faint hover:text-ink-mid p-1.5 transition-colors touch-none"
+            data-no-toggle
+            className="cursor-grab active:cursor-grabbing text-ink-faint hover:text-ink-mid p-1.5 transition-colors touch-none shrink-0"
             {...dragAttributes}
             {...dragListeners}
           >
             <GripVertical className="w-3.5 h-3.5" />
           </button>
-          <span className="text-[12px] font-medium text-ink-soft">
-            Job #{jobIndex + 1}
-          </span>
+          <span className="text-[12px] font-medium text-ink-soft truncate">{summaryTitle}</span>
         </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label="Remove job"
-          className="text-ink-mid hover:text-red-700 transition-colors p-1.5"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      <FieldRow label="Company" required>
-        <input
-          {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.company`)}
-          placeholder="Acme Studio"
-          className={inputClass}
-        />
-      </FieldRow>
-      <FieldRow label="Role" required>
-        <input
-          {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.role`)}
-          placeholder="Frontend Engineer"
-          className={inputClass}
-        />
-      </FieldRow>
-      <FieldRow label="Location">
-        <input
-          {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.location`)}
-          placeholder="Remote"
-          className={inputClass}
-        />
-      </FieldRow>
-      <div className="grid grid-cols-2 border-b border-hairline">
-        <div className="grid grid-cols-[60px_1fr] items-center focus-within:bg-ivory-warm transition-colors">
-          <label className="text-[13px] text-ink-soft px-3 py-3.5 font-medium">Start</label>
-          <input
-            {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.startDate`)}
-            placeholder="MM/YYYY"
-            className={inputClass}
-          />
-        </div>
-        <div className="grid grid-cols-[60px_1fr] items-center border-l border-hairline focus-within:bg-ivory-warm transition-colors">
-          <label className="text-[13px] text-ink-soft px-3 py-3.5 font-medium">End</label>
-          <input
-            {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.endDate`)}
-            placeholder="Present"
-            className={inputClass}
-          />
-        </div>
-      </div>
-
-      <div className="p-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="font-mono text-[10.5px] tracking-wider uppercase text-ink-mid">
-            Bullet points
-          </span>
+        <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
-            onClick={() => appendBullet({ id: crypto.randomUUID(), text: "" })}
-            className="text-[11.5px] text-ink-soft hover:text-ink"
+            onClick={onRemove}
+            data-no-toggle
+            aria-label="Remove job"
+            className="text-ink-mid hover:text-red-700 transition-colors p-1.5"
           >
-            + Add bullet
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
-        </div>
-        {bullets.length === 0 && (
-          <p className="text-[11.5px] text-ink-faint italic">No bullets yet.</p>
-        )}
-        <div className="space-y-1.5">
-          {bullets.map((b, bIndex) => (
-            <div key={b.id} className="flex gap-1.5 items-start">
-              <input
-                {...form.register(
-                  `sections.${sectionIndex}.data.items.${jobIndex}.bullets.${bIndex}.text`
-                )}
-                placeholder="What you did, what you shipped, the impact."
-                className="flex-1 bg-paper border border-hairline rounded-sm text-[13px] px-2.5 py-2 outline-none focus:border-ink-mid placeholder:text-ink-faint"
-              />
-              <button
-                type="button"
-                onClick={() => removeBullet(bIndex)}
-                aria-label="Remove bullet"
-                className="text-ink-mid hover:text-red-700 px-1.5 py-2 transition-colors"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            </div>
-          ))}
+          {collapsible && (
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-ink-mid transition-transform mr-1 ${
+                isExpanded ? "rotate-180" : ""
+              }`}
+            />
+          )}
         </div>
       </div>
+
+      {isExpanded && (
+        <>
+          <FieldRow label="Company" required>
+            <input
+              {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.company`)}
+              placeholder="Acme Studio"
+              className={inputClass}
+            />
+          </FieldRow>
+          <FieldRow label="Role" required>
+            <input
+              {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.role`)}
+              placeholder="Frontend Engineer"
+              className={inputClass}
+            />
+          </FieldRow>
+          <FieldRow label="Location">
+            <input
+              {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.location`)}
+              placeholder="Remote"
+              className={inputClass}
+            />
+          </FieldRow>
+          <div className="grid grid-cols-2 border-b border-hairline">
+            <div className="grid grid-cols-[60px_1fr] items-center focus-within:bg-ivory-warm transition-colors">
+              <label className="text-[13px] text-ink-soft px-3 py-3.5 font-medium">Start</label>
+              <input
+                {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.startDate`)}
+                placeholder="MM/YYYY"
+                className={inputClass}
+              />
+            </div>
+            <div className="grid grid-cols-[60px_1fr] items-center border-l border-hairline focus-within:bg-ivory-warm transition-colors">
+              <label className="text-[13px] text-ink-soft px-3 py-3.5 font-medium">End</label>
+              <input
+                {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.endDate`)}
+                placeholder="Present"
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          <div className="p-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-mono text-[10.5px] tracking-wider uppercase text-ink-mid">
+                Bullet points
+              </span>
+              <button
+                type="button"
+                onClick={() => appendBullet({ id: crypto.randomUUID(), text: "" })}
+                className="text-[11.5px] text-ink-soft hover:text-ink"
+              >
+                + Add bullet
+              </button>
+            </div>
+            {bullets.length === 0 && (
+              <p className="text-[11.5px] text-ink-faint italic">No bullets yet.</p>
+            )}
+            <div className="space-y-1.5">
+              {bullets.map((b, bIndex) => (
+                <div key={b.id} className="flex gap-1.5 items-start">
+                  <input
+                    {...form.register(
+                      `sections.${sectionIndex}.data.items.${jobIndex}.bullets.${bIndex}.text`
+                    )}
+                    placeholder="What you did, what you shipped, the impact."
+                    className="flex-1 bg-paper border border-hairline rounded-sm text-[13px] px-2.5 py-2 outline-none focus:border-ink-mid placeholder:text-ink-faint"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeBullet(bIndex)}
+                    aria-label="Remove bullet"
+                    className="text-ink-mid hover:text-red-700 px-1.5 py-2 transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

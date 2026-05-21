@@ -3,7 +3,7 @@
 import { useState } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Download } from "lucide-react";
+import { Download, Eye, X } from "lucide-react";
 import { useCVForm } from "@/lib/store";
 import { getScreenTheme } from "@/lib/renderers/screen/themes";
 import { summaryEntry } from "@/lib/sections/summary";
@@ -25,9 +25,41 @@ function dotClass(state: TabState): string {
   return "border border-current opacity-40";
 }
 
+type ThemeSwitcherProps = {
+  current: "harvard" | "faang" | "dense";
+  onSelect: (t: "harvard" | "faang" | "dense") => void;
+};
+
+function ThemeSwitcher({ current, onSelect }: ThemeSwitcherProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="font-mono text-[10.5px] tracking-wider uppercase text-ink-mid mr-1">
+        Theme
+      </span>
+      {(["harvard", "faang", "dense"] as const).map((t) => (
+        <button
+          key={t}
+          type="button"
+          onClick={() => onSelect(t)}
+          className={`w-7 h-7 border rounded-sm text-[11px] font-mono uppercase flex items-center justify-center transition-colors ${
+            current === t
+              ? "border-ink bg-ivory-warm text-ink"
+              : "border-dashed border-hairline-strong text-ink-mid hover:text-ink hover:border-ink-mid"
+          }`}
+          aria-label={t}
+          title={t.charAt(0).toUpperCase() + t.slice(1)}
+        >
+          {t.charAt(0).toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function CVBuilderPage() {
   const { form, isMounted, resetForm } = useCVForm();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("personal");
 
   if (!isMounted) return null;
@@ -71,37 +103,58 @@ export default function CVBuilderPage() {
   const tabStatuses = getTabStatuses(data);
   const exportState = canExport(data);
 
+  const setTheme = (t: "harvard" | "faang" | "dense") =>
+    form.setValue("theme", t, { shouldDirty: true });
+
+  const PreviewDocument = (
+    <div className={theme.pageClass}>
+      <PersonalInfoScreen data={data.personalInfo} theme={theme} />
+      {summarySection && <SummaryScreen section={summarySection} theme={theme} />}
+      {experienceSection && <ExperienceScreen section={experienceSection} theme={theme} />}
+      {educationSection && <EducationScreen section={educationSection} theme={theme} />}
+      {skillsSection && <SkillsScreen section={skillsSection} theme={theme} />}
+    </div>
+  );
+
+  const ExportButton = (
+    <button
+      type="button"
+      disabled={!exportState.ok}
+      className="inline-flex items-center gap-2 bg-ink text-panel border border-ink rounded-sm px-3 lg:px-4 py-2 lg:py-2.5 text-[13px] font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+    >
+      <Download className="w-3.5 h-3.5" />
+      Export PDF
+    </button>
+  );
+
   return (
-    <div className="h-screen p-10 overflow-hidden flex flex-col">
-      <div className="max-w-[1480px] mx-auto w-full shrink-0 mb-6">
-        <h1 className="font-display text-4xl text-ink leading-none">Build your CV.</h1>
-        <p className="text-sm text-ink-mid mt-2 leading-snug">
+    <div className="h-screen p-4 sm:p-6 lg:p-10 overflow-hidden flex flex-col">
+      <div className="max-w-[1480px] mx-auto w-full shrink-0 mb-4 lg:mb-6">
+        <h1 className="font-display text-3xl lg:text-4xl text-ink leading-none">Build your CV.</h1>
+        <p className="text-[13px] lg:text-sm text-ink-mid mt-2 leading-snug">
           Fill in the details. Everything updates as you type.
         </p>
       </div>
 
-      <div className="max-w-[1480px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-10 flex-1 min-h-0">
+      <div className="max-w-[1480px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 flex-1 min-h-0">
 
-        {/* PREVIEW PANEL */}
-        <section className="bg-panel rounded-lg flex flex-col h-full min-h-0 shadow-[0_1px_0_rgba(0,0,0,0.02),0_24px_60px_-30px_rgba(58,52,30,0.12)] overflow-hidden">
-          <div className="flex justify-between items-baseline px-10 pt-10 pb-6 shrink-0">
-            <span className="font-mono text-[11px] tracking-[0.08em] text-ink-mid uppercase">
-              / Live preview
-            </span>
-            <span className="font-mono text-[11px] text-ink-faint">
-              {theme.label} · Letter
-            </span>
+        {/* PREVIEW PANEL — desktop only */}
+        <section className="hidden lg:flex bg-panel rounded-lg flex-col h-full min-h-0 shadow-[0_1px_0_rgba(0,0,0,0.02),0_24px_60px_-30px_rgba(58,52,30,0.12)] overflow-hidden">
+          <div className="flex justify-between items-center px-10 pt-10 pb-6 shrink-0 gap-4 flex-wrap">
+            <div className="flex flex-col">
+              <span className="font-mono text-[11px] tracking-[0.08em] text-ink-mid uppercase">
+                / Live preview
+              </span>
+              <span className="font-mono text-[11px] text-ink-faint mt-0.5">
+                {theme.label} · Letter
+              </span>
+            </div>
+            <ThemeSwitcher current={data.theme} onSelect={setTheme} />
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-10 pb-10">
+          <div className="flex-1 min-h-0 overflow-y-auto px-10 pb-10 no-scrollbar">
             <div className="bg-paper border border-hairline rounded-sm p-14 shadow-[0_12px_32px_-16px_rgba(58,52,30,0.18)]">
-              <div className={theme.pageClass}>
-                <PersonalInfoScreen data={data.personalInfo} theme={theme} />
-                {summarySection && <SummaryScreen section={summarySection} theme={theme} />}
-                {experienceSection && <ExperienceScreen section={experienceSection} theme={theme} />}
-                {educationSection && <EducationScreen section={educationSection} theme={theme} />}
-                {skillsSection && <SkillsScreen section={skillsSection} theme={theme} />}
-              </div>
+              {PreviewDocument}
             </div>
           </div>
         </section>
@@ -114,8 +167,8 @@ export default function CVBuilderPage() {
             onValueChange={(v) => setActiveTab(v as TabId)}
             className="flex flex-col flex-1 min-h-0"
           >
-            <div className="px-10 pt-10 shrink-0">
-              <Tabs.List className="flex gap-1.5 mb-5 flex-wrap">
+            <div className="px-5 lg:px-10 pt-6 lg:pt-10 shrink-0">
+              <Tabs.List className="flex gap-1.5 mb-5 overflow-x-auto lg:flex-wrap lg:overflow-visible pb-1 -mx-1 px-1 no-scrollbar">
                 {tabStatuses.map((t) => {
                   const isComplete = t.state === "complete";
                   const isPartial = t.state === "partial";
@@ -123,9 +176,9 @@ export default function CVBuilderPage() {
                     <Tabs.Trigger
                       key={t.id}
                       value={t.id}
-                      className="group relative inline-flex flex-col items-stretch gap-1.5"
+                      className="group relative inline-flex flex-col items-stretch gap-1.5 shrink-0"
                     >
-                      <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-mid px-3.5 py-1.5 border border-dashed border-hairline-strong rounded-sm group-data-[state=inactive]:hover:text-ink group-data-[state=inactive]:hover:border-ink-mid transition-colors group-data-[state=active]:bg-ink group-data-[state=active]:text-panel group-data-[state=active]:border-ink">
+                      <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-mid px-3.5 py-1.5 border border-dashed border-hairline-strong rounded-sm group-data-[state=inactive]:hover:text-ink group-data-[state=inactive]:hover:border-ink-mid transition-colors group-data-[state=active]:bg-ink group-data-[state=active]:text-panel group-data-[state=active]:border-ink whitespace-nowrap">
                         {t.label}
                         <span
                           className={`w-1.5 h-1.5 rounded-full transition-colors ${dotClass(t.state)} ${
@@ -142,7 +195,7 @@ export default function CVBuilderPage() {
               </Tabs.List>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto px-10 pb-6">
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 lg:px-10 pb-6 no-scrollbar">
               <Tabs.Content value="personal" className="outline-none">
                 <PersonalInfoForm form={form} />
               </Tabs.Content>
@@ -169,50 +222,20 @@ export default function CVBuilderPage() {
             </div>
           </Tabs.Root>
 
-          <div className="px-10 py-5 border-t border-hairline bg-panel flex items-center justify-between gap-4 flex-wrap shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[10.5px] tracking-wider uppercase text-ink-mid mr-1">
-                Theme
-              </span>
-              {(["harvard", "faang", "dense"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => form.setValue("theme", t, { shouldDirty: true })}
-                  className={`w-7 h-7 border rounded-sm text-[11px] font-mono uppercase flex items-center justify-center transition-colors ${
-                    data.theme === t
-                      ? "border-ink bg-ivory-warm text-ink"
-                      : "border-dashed border-hairline-strong text-ink-mid hover:text-ink hover:border-ink-mid"
-                  }`}
-                  aria-label={t}
-                  title={t.charAt(0).toUpperCase() + t.slice(1)}
-                >
-                  {t.charAt(0).toUpperCase()}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-[10.5px] text-ink-faint">
-                {exportState.ok ? "Ready to export" : exportState.reason}
-              </span>
-              <button
-                type="button"
-                disabled={!exportState.ok}
-                className="inline-flex items-center gap-2 bg-ink text-panel border border-ink rounded-sm px-4 py-2.5 text-[13px] font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Export PDF
-              </button>
-            </div>
+          {/* Desktop form bottom bar — Export only */}
+          <div className="hidden lg:flex px-5 lg:px-10 py-4 lg:py-5 border-t border-hairline bg-panel items-center justify-end gap-3 shrink-0">
+            <span className="font-mono text-[10.5px] text-ink-faint">
+              {exportState.ok ? "Ready to export" : exportState.reason}
+            </span>
+            {ExportButton}
           </div>
 
         </section>
 
       </div>
 
-      <div className="max-w-[1480px] mx-auto w-full shrink-0 mt-4 grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div />
+      <div className="max-w-[1480px] mx-auto w-full shrink-0 mt-3 lg:mt-4 grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="hidden lg:block" />
         <div className="flex justify-end">
           <button
             type="button"
@@ -224,10 +247,65 @@ export default function CVBuilderPage() {
         </div>
       </div>
 
+      {/* Mobile Preview FAB */}
+      <button
+        type="button"
+        onClick={() => setPreviewOpen(true)}
+        className="lg:hidden fixed bottom-20 right-5 z-40 w-14 h-14 rounded-full bg-ink text-panel shadow-[0_8px_24px_-6px_rgba(58,52,30,0.4)] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        aria-label="Preview CV"
+      >
+        <Eye className="w-5 h-5" />
+      </button>
+
+      {/* Mobile Preview Sheet */}
+      <Dialog.Root open={previewOpen} onOpenChange={setPreviewOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="lg:hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-50" />
+          <Dialog.Content className="lg:hidden fixed inset-0 z-50 bg-ground flex flex-col">
+            <Dialog.Title className="sr-only">CV preview</Dialog.Title>
+            <div className="flex justify-between items-center px-5 py-4 border-b border-hairline shrink-0">
+              <div className="flex flex-col">
+                <span className="font-mono text-[11px] tracking-[0.08em] text-ink-mid uppercase">
+                  / Live preview
+                </span>
+                <span className="font-mono text-[10px] text-ink-faint mt-0.5">
+                  {theme.label} · Letter
+                </span>
+              </div>
+              <Dialog.Close asChild>
+                <button
+                  type="button"
+                  className="w-9 h-9 rounded-sm border border-hairline flex items-center justify-center text-ink-soft hover:text-ink hover:border-ink-mid transition-colors"
+                  aria-label="Close preview"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </Dialog.Close>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto p-5 pb-32 no-scrollbar">
+              <div className="bg-paper border border-hairline rounded-sm p-6 shadow-[0_12px_32px_-16px_rgba(58,52,30,0.18)]">
+                {PreviewDocument}
+              </div>
+            </div>
+
+            <div className="absolute bottom-0 left-0 right-0 px-5 py-4 border-t border-hairline bg-panel flex items-center justify-between gap-3 flex-wrap">
+              <ThemeSwitcher current={data.theme} onSelect={setTheme} />
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[10.5px] text-ink-faint hidden sm:inline">
+                  {exportState.ok ? "Ready" : exportState.reason}
+                </span>
+                {ExportButton}
+              </div>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
       <Dialog.Root open={confirmOpen} onOpenChange={setConfirmOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-ink/30 backdrop-blur-sm z-50" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-panel border border-hairline rounded-md p-6 w-[400px] z-50 shadow-[0_24px_60px_-20px_rgba(58,52,30,0.35)]">
+          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-panel border border-hairline rounded-md p-6 w-[calc(100vw-2rem)] max-w-[400px] z-50 shadow-[0_24px_60px_-20px_rgba(58,52,30,0.35)]">
             <Dialog.Title className="font-display text-2xl text-ink leading-none mb-3">
               Reset everything?
             </Dialog.Title>
