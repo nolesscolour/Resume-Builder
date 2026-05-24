@@ -2,9 +2,7 @@
 
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { Info } from "lucide-react";
-import type { ReactNode } from "react";
-import { useState } from "react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 type FieldRowProps = {
   label: string;
