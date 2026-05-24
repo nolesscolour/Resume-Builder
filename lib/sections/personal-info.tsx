@@ -3,6 +3,7 @@
 import type { UseFormReturn } from "react-hook-form";
 import type { CVData } from "@/lib/schema";
 import type { ScreenTheme } from "./types";
+import { FieldRow } from "./field-row";
 
 // Personal info is special — it lives at the root, not in sections[].
 // It still follows the same form/screen pattern.
@@ -10,76 +11,62 @@ import type { ScreenTheme } from "./types";
 export function PersonalInfoForm({ form }: { form: UseFormReturn<CVData> }) {
   return (
     <div className="border border-hairline rounded-md bg-paper overflow-hidden">
-      <Row label="Full name" required>
+      <FieldRow label="Full name" required tip="Use your real legal or professional name as it appears on LinkedIn and your ID. Drop nicknames and middle initials unless you actually publish under them.">
         <input
           type="text"
           {...form.register("personalInfo.fullName")}
           placeholder="Jane Doe"
           className={inputClass}
         />
-      </Row>
-      <Row label="Email" required>
+      </FieldRow>
+      <FieldRow label="Email" required tip="Use a clean firstname.lastname address from Gmail or your own domain. Skip nicknames, numbers, and old college emails.">
         <input
           type="email"
           {...form.register("personalInfo.email")}
           placeholder="jane@example.com"
           className={inputClass}
         />
-      </Row>
-      <Row label="Phone" required>
+      </FieldRow>
+      <FieldRow label="Phone" required tip="Include country code (+91 for India, +1 for US). Use the number you actually answer — recruiters call.">
         <input
           type="tel"
           {...form.register("personalInfo.phone")}
           placeholder="+91 98765 43210"
           className={inputClass}
         />
-      </Row>
-      <Row label="Location" required>
+      </FieldRow>
+      <FieldRow label="Location" required tip="City and country only. No street address. If you're open to relocation, write 'City, Country (open to relocation)'.">
         <input
           type="text"
           {...form.register("personalInfo.location")}
           placeholder="Kolkata, India"
           className={inputClass}
         />
-      </Row>
-      <Row label="LinkedIn">
+      </FieldRow>
+      <FieldRow label="LinkedIn" tip="Custom URL preferred — 'linkedin.com/in/janedoe' not the default string of numbers. Make sure your profile matches your CV.">
         <input
           type="url"
           {...form.register("personalInfo.linkedin")}
           placeholder="linkedin.com/in/..."
           className={inputClass}
         />
-      </Row>
-      <Row label="GitHub">
+      </FieldRow>
+      <FieldRow label="GitHub" tip="Include only if your GitHub shows real work — pinned repos, recent commits. An empty profile is worse than no link.">
         <input
           type="url"
           {...form.register("personalInfo.github")}
           placeholder="github.com/..."
           className={inputClass}
         />
-      </Row>
-      <Row label="Website" last>
+      </FieldRow>
+      <FieldRow label="Website" last tip="Personal portfolio, project showcase, or writing. Skip if it's outdated or under construction.">
         <input
           type="url"
           {...form.register("personalInfo.website")}
           placeholder="example.com"
           className={inputClass}
         />
-      </Row>
-    </div>
-  );
-}
-
-function Row({ label, last, required, children }: { label: string; last?: boolean; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div
-      className={`grid grid-cols-[96px_1fr] items-center ${last ? "" : "border-b border-hairline"} focus-within:bg-ivory-warm transition-colors`}
-    >
-      <label className="text-[13px] text-ink-soft px-4 py-3.5 font-medium">
-        {label}
-        {required && <span className="text-red-600 ml-0.5">*</span>}
-      </label>
-      {children}
+      </FieldRow>
     </div>
   );
 }

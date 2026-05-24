@@ -20,6 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { SectionEntry, SectionFormProps, SectionScreenProps } from "./types";
+import { FieldRow, FieldTip } from "./field-row";
 import type { SectionByType } from "@/lib/schema";
 
 type EducationSection = SectionByType<"education">;
@@ -43,19 +44,26 @@ function EducationForm({ form, sectionIndex }: SectionFormProps) {
     name: `sections.${sectionIndex}.data.items` as const,
   });
 
-  const [expandedIndex, setExpandedIndex] = useState<number>(0);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const hasAutoAdded = useRef(false);
 
   useEffect(() => {
     if (fields.length === 0 && !hasAutoAdded.current) {
       hasAutoAdded.current = true;
       append(makeEmptyEdu());
-      setExpandedIndex(0);
-    } else if (fields.length > 0 && expandedIndex >= fields.length) {
-      setExpandedIndex(fields.length - 1);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fields.length]);
+  }, []);
+
+  const explicitIndex = expandedId
+    ? fields.findIndex((f) => f.id === expandedId)
+    : -1;
+  const expandedIndex =
+    explicitIndex >= 0
+      ? explicitIndex
+      : fields.length > 0
+      ? fields.length - 1
+      : -1;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -67,16 +75,13 @@ function EducationForm({ form, sectionIndex }: SectionFormProps) {
     if (!over || active.id === over.id) return;
     const oldIndex = fields.findIndex((f) => f.id === active.id);
     const newIndex = fields.findIndex((f) => f.id === over.id);
-    if (oldIndex >= 0 && newIndex >= 0) {
-      move(oldIndex, newIndex);
-      if (expandedIndex === oldIndex) setExpandedIndex(newIndex);
-      else if (expandedIndex === newIndex) setExpandedIndex(oldIndex);
-    }
+    if (oldIndex >= 0 && newIndex >= 0) move(oldIndex, newIndex);
   }
 
   function handleAdd() {
-    append(makeEmptyEdu());
-    setExpandedIndex(fields.length);
+    const edu = makeEmptyEdu();
+    append(edu);
+    setExpandedId(edu.id);
   }
 
   function handleRemove(index: number) {
@@ -85,11 +90,10 @@ function EducationForm({ form, sectionIndex }: SectionFormProps) {
       form.setValue(`sections.${sectionIndex}.data.items.${index}` as const, empty, {
         shouldDirty: true,
       });
-      setExpandedIndex(0);
+      setExpandedId(null);
     } else {
+      if (fields[index]?.id === expandedId) setExpandedId(null);
       remove(index);
-      if (expandedIndex === index) setExpandedIndex(0);
-      else if (expandedIndex > index) setExpandedIndex(expandedIndex - 1);
     }
   }
 
@@ -122,7 +126,9 @@ function EducationForm({ form, sectionIndex }: SectionFormProps) {
                 eduIndex={index}
                 isExpanded={expandedIndex === index}
                 collapsible={collapsible}
-                onToggle={() => setExpandedIndex(expandedIndex === index ? -1 : index)}
+                onToggle={() =>
+                  setExpandedId(fields[index].id === expandedId ? null : fields[index].id)
+                }
                 onRemove={() => handleRemove(index)}
               />
             ))}
@@ -235,28 +241,28 @@ function EduCard({
 
       {isExpanded && (
         <>
-          <FieldRow label="School" required>
+          <FieldRow label="School" required tip="Full official name of the institution. 'MIT' is fine if widely recognized; otherwise write it out. Don't include the department here — that goes in Field.">
             <input
               {...form.register(`sections.${sectionIndex}.data.items.${eduIndex}.school`)}
               placeholder="National Institute of Design"
               className={inputClass}
             />
           </FieldRow>
-          <FieldRow label="Degree" required>
+          <FieldRow label="Degree" required tip="The degree name only: B.Tech, M.S., MBA, B.A., Ph.D. Skip 'Bachelor of' prefixes — use the standard abbreviation recruiters scan for.">
             <input
               {...form.register(`sections.${sectionIndex}.data.items.${eduIndex}.degree`)}
               placeholder="B.Des"
               className={inputClass}
             />
           </FieldRow>
-          <FieldRow label="Field">
+          <FieldRow label="Field" tip="Major or specialization — Computer Science, Interaction Design, Mechanical Engineering. Skip generic terms like 'Studies'.">
             <input
               {...form.register(`sections.${sectionIndex}.data.items.${eduIndex}.field`)}
               placeholder="Interaction Design"
               className={inputClass}
             />
           </FieldRow>
-          <FieldRow label="Location">
+          <FieldRow label="Location" tip="City and country. Helps recruiters who care about regional context — local employers often filter by it.">
             <input
               {...form.register(`sections.${sectionIndex}.data.items.${eduIndex}.location`)}
               placeholder="Ahmedabad, India"
@@ -264,24 +270,30 @@ function EduCard({
             />
           </FieldRow>
           <div className="grid grid-cols-2 border-b border-hairline">
-            <div className="grid grid-cols-[60px_1fr] items-center focus-within:bg-ivory-warm transition-colors">
+            <div className="grid grid-cols-[60px_1fr_44px] items-center focus-within:bg-ivory-warm transition-colors">
               <label className="text-[13px] text-ink-soft px-3 py-3.5 font-medium">Start</label>
               <input
                 {...form.register(`sections.${sectionIndex}.data.items.${eduIndex}.startDate`)}
                 placeholder="MM/YYYY"
                 className={inputClass}
               />
+              <div className="border-l border-hairline h-full flex items-center justify-center">
+                <FieldTip text="Use MM/YYYY format. Use the actual start of your program, not the calendar year you were accepted." />
+              </div>
             </div>
-            <div className="grid grid-cols-[60px_1fr] items-center border-l border-hairline focus-within:bg-ivory-warm transition-colors">
+            <div className="grid grid-cols-[60px_1fr_44px] items-center border-l border-hairline focus-within:bg-ivory-warm transition-colors">
               <label className="text-[13px] text-ink-soft px-3 py-3.5 font-medium">End</label>
               <input
                 {...form.register(`sections.${sectionIndex}.data.items.${eduIndex}.endDate`)}
                 placeholder="MM/YYYY"
                 className={inputClass}
               />
+              <div className="border-l border-hairline h-full flex items-center justify-center">
+                <FieldTip text="Graduation date (MM/YYYY). For ongoing degrees, use 'Expected MM/YYYY'." />
+              </div>
             </div>
           </div>
-          <FieldRow label="GPA" last>
+          <FieldRow label="GPA" last tip="Only include if it's 3.5/4.0 or above (or top 25% equivalent). Below that, leave it blank — a low GPA hurts more than no GPA. Always include the scale: '3.8/4.0', not just '3.8'.">
             <input
               {...form.register(`sections.${sectionIndex}.data.items.${eduIndex}.gpa`)}
               placeholder="3.8 / 4.0 (optional)"
@@ -294,29 +306,7 @@ function EduCard({
   );
 }
 
-function FieldRow({
-  label,
-  children,
-  last,
-  required,
-}: {
-  label: string;
-  children: React.ReactNode;
-  last?: boolean;
-  required?: boolean;
-}) {
-  return (
-    <div
-      className={`grid grid-cols-[96px_1fr] items-center ${last ? "" : "border-b border-hairline"} focus-within:bg-ivory-warm transition-colors`}
-    >
-      <label className="text-[13px] text-ink-soft px-4 py-3.5 font-medium">
-        {label}
-        {required && <span className="text-red-600 ml-0.5">*</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
+
 
 const inputClass =
   "w-full bg-transparent border-0 text-[14px] text-ink py-3.5 pr-4 outline-none placeholder:text-ink-faint";

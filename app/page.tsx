@@ -12,6 +12,10 @@ import { experienceEntry } from "@/lib/sections/experience";
 import { educationEntry } from "@/lib/sections/education";
 import { skillsEntry } from "@/lib/sections/skills";
 import { getTabStatuses, canExport, type TabId, type TabState } from "@/lib/sections/completion";
+import { exportCVAsPdf } from "@/lib/pdf/export";
+import type { PaperSize } from "@/lib/pdf/themes";
+import { PaginatedPreview } from "@/lib/renderers/screen/paginated-preview";
+import { TipsModalTrigger } from "@/lib/tips/tips-modal";
 
 function lineColor(state: TabState): string {
   if (state === "complete") return "bg-emerald-600";
@@ -61,6 +65,8 @@ export default function CVBuilderPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("personal");
+  const [paperSize, setPaperSize] = useState<PaperSize>("letter");
+  const [isExporting, setIsExporting] = useState(false);
 
   if (!isMounted) return null;
 
@@ -116,24 +122,63 @@ export default function CVBuilderPage() {
     </div>
   );
 
+  async function handleExport() {
+    if (!exportState.ok || isExporting) return;
+    setIsExporting(true);
+    try {
+      await exportCVAsPdf(data, data.theme, paperSize);
+    } catch (err) {
+      console.error("PDF export failed", err);
+      alert("Something went wrong exporting your CV. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   const ExportButton = (
     <button
       type="button"
-      disabled={!exportState.ok}
+      onClick={handleExport}
+      disabled={!exportState.ok || isExporting}
       className="inline-flex items-center gap-2 bg-ink text-panel border border-ink rounded-sm px-3 lg:px-4 py-2 lg:py-2.5 text-[13px] font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
     >
       <Download className="w-3.5 h-3.5" />
-      Export PDF
+      {isExporting ? "Exporting…" : "Export PDF"}
     </button>
+  );
+
+  const PaperSizeSwitcher = (
+    <div className="flex items-center gap-1.5">
+      <span className="font-mono text-[10.5px] tracking-wider uppercase text-ink-mid mr-0.5">
+        Paper
+      </span>
+      {(["letter", "a4"] as const).map((p) => (
+        <button
+          key={p}
+          type="button"
+          onClick={() => setPaperSize(p)}
+          className={`px-2 h-7 border rounded-sm text-[11px] font-mono uppercase transition-colors ${
+            paperSize === p
+              ? "border-ink bg-ivory-warm text-ink"
+              : "border-dashed border-hairline-strong text-ink-mid hover:text-ink hover:border-ink-mid"
+          }`}
+        >
+          {p === "letter" ? "LTR" : "A4"}
+        </button>
+      ))}
+    </div>
   );
 
   return (
     <div className="h-screen p-4 sm:p-6 lg:p-10 overflow-hidden flex flex-col">
-      <div className="max-w-[1480px] mx-auto w-full shrink-0 mb-4 lg:mb-6">
-        <h1 className="font-display text-3xl lg:text-4xl text-ink leading-none">Build your CV.</h1>
-        <p className="text-[13px] lg:text-sm text-ink-mid mt-2 leading-snug">
-          Fill in the details. Everything updates as you type.
-        </p>
+      <div className="max-w-[1480px] mx-auto w-full shrink-0 mb-4 lg:mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl lg:text-4xl text-ink leading-none">Build your CV.</h1>
+          <p className="text-[13px] lg:text-sm text-ink-mid mt-2 leading-snug">
+            Fill in the details. Everything updates as you type.
+          </p>
+        </div>
+        <TipsModalTrigger />
       </div>
 
       <div className="max-w-[1480px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 flex-1 min-h-0">
@@ -153,9 +198,9 @@ export default function CVBuilderPage() {
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto px-10 pb-10 no-scrollbar">
-            <div className="bg-paper border border-hairline rounded-sm p-14 shadow-[0_12px_32px_-16px_rgba(58,52,30,0.18)]">
+            <PaginatedPreview paperSize={paperSize}>
               {PreviewDocument}
-            </div>
+            </PaginatedPreview>
           </div>
         </section>
 
@@ -222,12 +267,15 @@ export default function CVBuilderPage() {
             </div>
           </Tabs.Root>
 
-          {/* Desktop form bottom bar — Export only */}
-          <div className="hidden lg:flex px-5 lg:px-10 py-4 lg:py-5 border-t border-hairline bg-panel items-center justify-end gap-3 shrink-0">
-            <span className="font-mono text-[10.5px] text-ink-faint">
-              {exportState.ok ? "Ready to export" : exportState.reason}
-            </span>
-            {ExportButton}
+          {/* Desktop form bottom bar — Paper + Export */}
+          <div className="hidden lg:flex px-5 lg:px-10 py-4 lg:py-5 border-t border-hairline bg-panel items-center justify-between gap-3 shrink-0 flex-wrap">
+            {PaperSizeSwitcher}
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-[10.5px] text-ink-faint">
+                {exportState.ok ? "Ready to export" : exportState.reason}
+              </span>
+              {ExportButton}
+            </div>
           </div>
 
         </section>
@@ -235,7 +283,11 @@ export default function CVBuilderPage() {
       </div>
 
       <div className="max-w-[1480px] mx-auto w-full shrink-0 mt-3 lg:mt-4 grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div className="hidden lg:block" />
+        <div className="hidden lg:flex items-center">
+          <span className="text-[12px] text-ink-mid">
+            Built by <a href="https://ashlensingh.com" target="_blank" rel="noopener noreferrer" className="text-ink hover:underline underline-offset-2 transition-colors">Ashlen Singh</a><span className="text-ink-faint"> · Designer</span>
+          </span>
+        </div>
         <div className="flex justify-end">
           <button
             type="button"
@@ -263,6 +315,9 @@ export default function CVBuilderPage() {
           <Dialog.Overlay className="lg:hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-50" />
           <Dialog.Content className="lg:hidden fixed inset-0 z-50 bg-ground flex flex-col">
             <Dialog.Title className="sr-only">CV preview</Dialog.Title>
+            <Dialog.Description className="sr-only">
+              Preview of your CV as it will appear when exported
+            </Dialog.Description>
             <div className="flex justify-between items-center px-5 py-4 border-b border-hairline shrink-0">
               <div className="flex flex-col">
                 <span className="font-mono text-[11px] tracking-[0.08em] text-ink-mid uppercase">
@@ -284,15 +339,18 @@ export default function CVBuilderPage() {
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto p-5 pb-32 no-scrollbar">
-              <div className="bg-paper border border-hairline rounded-sm p-6 shadow-[0_12px_32px_-16px_rgba(58,52,30,0.18)]">
+              <PaginatedPreview paperSize={paperSize}>
                 {PreviewDocument}
-              </div>
+              </PaginatedPreview>
             </div>
 
-            <div className="absolute bottom-0 left-0 right-0 px-5 py-4 border-t border-hairline bg-panel flex items-center justify-between gap-3 flex-wrap">
-              <ThemeSwitcher current={data.theme} onSelect={setTheme} />
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-[10.5px] text-ink-faint hidden sm:inline">
+            <div className="absolute bottom-0 left-0 right-0 px-5 py-4 border-t border-hairline bg-panel flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <ThemeSwitcher current={data.theme} onSelect={setTheme} />
+                {PaperSizeSwitcher}
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-mono text-[10.5px] text-ink-faint">
                   {exportState.ok ? "Ready" : exportState.reason}
                 </span>
                 {ExportButton}

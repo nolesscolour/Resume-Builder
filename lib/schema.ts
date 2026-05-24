@@ -4,32 +4,13 @@ import { z } from "zod";
 // PRIMITIVES
 // ============================================================
 
-const dateString = z
-  .string()
-  .regex(
-    /^(0[1-9]|1[0-2])\/\d{4}$|^Present$|^$/,
-    "Use MM/YYYY format or 'Present'"
-  );
+// Storage-level validation: accept any string. UI-level format hints
+// are surface-level only; the schema's job is to ensure shape.
+const dateString = z.string().default("");
 
-const optionalEmail = z
-  .string()
-  .trim()
-  .default("")
-  .refine(
-    (val) => val === "" || z.string().email().safeParse(val).success,
-    "Must be a valid email or empty"
-  );
+const optionalEmail = z.string().trim().default("");
 
-const optionalUrl = z
-  .string()
-  .trim()
-  .default("")
-  .refine(
-    (val) =>
-      val === "" ||
-      /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w\-._~:/?#[\]@!$&'()*+,;=]*)?$/.test(val),
-    "Must be a valid URL or empty"
-  );
+const optionalUrl = z.string().trim().default("");
 
 // ============================================================
 // SECTION DATA SHAPES

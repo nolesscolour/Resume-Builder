@@ -20,6 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { SectionEntry, SectionFormProps, SectionScreenProps } from "./types";
+import { FieldRow, FieldTip } from "./field-row";
 import type { SectionByType } from "@/lib/schema";
 
 type ExperienceSection = SectionByType<"experience">;
@@ -43,20 +44,30 @@ function ExperienceForm({ form, sectionIndex }: SectionFormProps) {
     name: `sections.${sectionIndex}.data.items` as const,
   });
 
-  const [expandedIndex, setExpandedIndex] = useState<number>(0);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const hasAutoAdded = useRef(false);
 
-  // Auto-add one empty entry if list is empty
+  // Auto-add a single empty entry on first mount when list is empty
   useEffect(() => {
     if (fields.length === 0 && !hasAutoAdded.current) {
       hasAutoAdded.current = true;
       append(makeEmptyJob());
-      setExpandedIndex(0);
-    } else if (fields.length > 0 && expandedIndex >= fields.length) {
-      setExpandedIndex(fields.length - 1);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fields.length]);
+  }, []);
+
+  // Derive expanded index at render time. If the stored ID doesn't match any
+  // current field (e.g. user deleted it, or none picked yet), fall back to the
+  // last card. -1 means nothing is expanded.
+  const explicitIndex = expandedId
+    ? fields.findIndex((f) => f.id === expandedId)
+    : -1;
+  const expandedIndex =
+    explicitIndex >= 0
+      ? explicitIndex
+      : fields.length > 0
+      ? fields.length - 1
+      : -1;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -68,16 +79,14 @@ function ExperienceForm({ form, sectionIndex }: SectionFormProps) {
     if (!over || active.id === over.id) return;
     const oldIndex = fields.findIndex((f) => f.id === active.id);
     const newIndex = fields.findIndex((f) => f.id === over.id);
-    if (oldIndex >= 0 && newIndex >= 0) {
-      move(oldIndex, newIndex);
-      if (expandedIndex === oldIndex) setExpandedIndex(newIndex);
-      else if (expandedIndex === newIndex) setExpandedIndex(oldIndex);
-    }
+    if (oldIndex >= 0 && newIndex >= 0) move(oldIndex, newIndex);
+    // expandedId persists through reorder \u2014 same field still expanded
   }
 
   function handleAdd() {
-    append(makeEmptyJob());
-    setExpandedIndex(fields.length); // new index will be the current length
+    const job = makeEmptyJob();
+    append(job);
+    setExpandedId(job.id);
   }
 
   function handleRemove(index: number) {
@@ -86,11 +95,11 @@ function ExperienceForm({ form, sectionIndex }: SectionFormProps) {
       form.setValue(`sections.${sectionIndex}.data.items.${index}` as const, empty, {
         shouldDirty: true,
       });
-      setExpandedIndex(0);
+      setExpandedId(null);
     } else {
       remove(index);
-      if (expandedIndex === index) setExpandedIndex(0);
-      else if (expandedIndex > index) setExpandedIndex(expandedIndex - 1);
+      // If the removed card was the explicitly expanded one, clear so derive falls back to last
+      if (fields[index]?.id === expandedId) setExpandedId(null);
     }
   }
 
@@ -123,7 +132,9 @@ function ExperienceForm({ form, sectionIndex }: SectionFormProps) {
                 jobIndex={index}
                 isExpanded={expandedIndex === index}
                 collapsible={collapsible}
-                onToggle={() => setExpandedIndex(expandedIndex === index ? -1 : index)}
+                onToggle={() =>
+                  setExpandedId(fields[index].id === expandedId ? null : fields[index].id)
+                }
                 onRemove={() => handleRemove(index)}
               />
             ))}
@@ -242,21 +253,21 @@ function JobCard({
 
       {isExpanded && (
         <>
-          <FieldRow label="Company" required>
+          <FieldRow label="Company" required tip="Use the official company name as it appears on LinkedIn or the company website. Skip 'Inc.', 'LLC', and parent-company suffixes unless the brand is genuinely known by them.">
             <input
               {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.company`)}
               placeholder="Acme Studio"
               className={inputClass}
             />
           </FieldRow>
-          <FieldRow label="Role" required>
+          <FieldRow label="Role" required tip="Use your real job title. If your internal title was unusual (e.g., 'Pixel Wrangler'), translate it to a standard equivalent ('Frontend Engineer') so recruiters and ATS systems can match it.">
             <input
               {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.role`)}
               placeholder="Frontend Engineer"
               className={inputClass}
             />
           </FieldRow>
-          <FieldRow label="Location">
+          <FieldRow label="Location" tip="City and country, or 'Remote'. Skip street addresses. If you worked remote for a company in another city, write 'Remote' — not the company's HQ city.">
             <input
               {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.location`)}
               placeholder="Remote"
@@ -264,29 +275,38 @@ function JobCard({
             />
           </FieldRow>
           <div className="grid grid-cols-2 border-b border-hairline">
-            <div className="grid grid-cols-[60px_1fr] items-center focus-within:bg-ivory-warm transition-colors">
+            <div className="grid grid-cols-[60px_1fr_44px] items-center focus-within:bg-ivory-warm transition-colors">
               <label className="text-[13px] text-ink-soft px-3 py-3.5 font-medium">Start</label>
               <input
                 {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.startDate`)}
                 placeholder="MM/YYYY"
                 className={inputClass}
               />
+              <div className="border-l border-hairline h-full flex items-center justify-center">
+                <FieldTip text="Use MM/YYYY format (e.g., '03/2022'). Consistency across all entries beats precision." />
+              </div>
             </div>
-            <div className="grid grid-cols-[60px_1fr] items-center border-l border-hairline focus-within:bg-ivory-warm transition-colors">
+            <div className="grid grid-cols-[60px_1fr_44px] items-center border-l border-hairline focus-within:bg-ivory-warm transition-colors">
               <label className="text-[13px] text-ink-soft px-3 py-3.5 font-medium">End</label>
               <input
                 {...form.register(`sections.${sectionIndex}.data.items.${jobIndex}.endDate`)}
                 placeholder="Present"
                 className={inputClass}
               />
+              <div className="border-l border-hairline h-full flex items-center justify-center">
+                <FieldTip text="Use MM/YYYY, or 'Present' if you're still in this role. Don't leave blank — recruiters notice gaps and ambiguous dates." />
+              </div>
             </div>
           </div>
 
           <div className="p-4">
             <div className="flex justify-between items-center mb-2">
-              <span className="font-mono text-[10.5px] tracking-wider uppercase text-ink-mid">
-                Bullet points
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-[10.5px] tracking-wider uppercase text-ink-mid">
+                  Bullet points
+                </span>
+                <FieldTip text="Start each bullet with a strong past-tense verb — 'Led', 'Built', 'Shipped', 'Reduced'. Quantify impact whenever possible: '40% faster', '$2M saved', '3-person team'. Skip 'responsible for' and 'helped with' — they signal absence of agency. One line per bullet, 3-6 bullets per role." />
+              </div>
               <button
                 type="button"
                 onClick={() => appendBullet({ id: crypto.randomUUID(), text: "" })}
@@ -326,17 +346,7 @@ function JobCard({
   );
 }
 
-function FieldRow({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
-  return (
-    <div className="grid grid-cols-[96px_1fr] items-center border-b border-hairline focus-within:bg-ivory-warm transition-colors">
-      <label className="text-[13px] text-ink-soft px-4 py-3.5 font-medium">
-        {label}
-        {required && <span className="text-red-600 ml-0.5">*</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
+
 
 const inputClass =
   "w-full bg-transparent border-0 text-[14px] text-ink py-3.5 pr-4 outline-none placeholder:text-ink-faint";
@@ -349,7 +359,7 @@ function ExperienceScreen({ section, theme }: SectionScreenProps<ExperienceSecti
 
   return (
     <section className={theme.sectionClass}>
-      <h2 className={theme.sectionTitleClass}>Experience</h2>
+      <h2 className={theme.sectionTitleClass}>Work Experience</h2>
       {items.map((job) => {
         const validBullets = job.bullets.filter((b) => b.text.trim());
         const dateRange = formatDateRange(job.startDate, job.endDate, job.current);

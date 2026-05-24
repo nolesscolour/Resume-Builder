@@ -6,7 +6,7 @@ const harvard: ScreenTheme = {
   label: "Harvard",
   pageClass: "font-doc text-black leading-relaxed",
   headerClass: "text-center pb-2.5 mb-4 border-b-[1.5px] border-black",
-  nameClass: "text-2xl font-bold uppercase tracking-[0.06em]",
+  nameClass: "text-2xl font-normal uppercase tracking-[0.06em]",
   contactRowClass: "text-[11px] mt-1.5 flex flex-wrap justify-center gap-x-2",
   contactSeparator: " · ",
   sectionClass: "mb-3",
@@ -17,8 +17,8 @@ const harvard: ScreenTheme = {
   bulletListClass: "list-disc ml-[18px] text-[10.5px] leading-[1.45] mt-1",
   bulletItemClass: "pl-0.5 mb-0.5",
   itemHeaderClass: "flex justify-between items-baseline gap-3",
-  itemTitleClass: "text-[12px] font-bold",
-  itemSubtitleClass: "text-[11px] italic",
+  itemTitleClass: "text-[13px] font-bold",
+  itemSubtitleClass: "text-[11px] italic font-normal text-ink-soft",
   itemDateClass: "text-[10.5px] text-neutral-700 tabular-nums whitespace-nowrap",
 };
 
@@ -30,7 +30,7 @@ const faang: ScreenTheme = {
   headerClass: "pb-2.5 mb-4 border-b-2 border-neutral-900",
   nameClass: "text-2xl font-bold tracking-tight",
   contactRowClass: "text-[11px] mt-1.5 flex flex-wrap gap-x-3 text-neutral-700",
-  contactSeparator: "",
+  contactSeparator: " · ",
   sectionTitleClass:
     "text-[11px] font-bold uppercase tracking-[0.12em] text-neutral-900 mb-1.5",
   itemTitleClass: "text-[12px] font-semibold text-neutral-900",

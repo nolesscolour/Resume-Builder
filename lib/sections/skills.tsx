@@ -20,6 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { SectionEntry, SectionFormProps, SectionScreenProps } from "./types";
+import { FieldTip } from "./field-row";
 import type { SectionByType } from "@/lib/schema";
 
 type SkillsSection = SectionByType<"skills">;
@@ -38,19 +39,26 @@ function SkillsForm({ form, sectionIndex }: SectionFormProps) {
     name: `sections.${sectionIndex}.data.groups` as const,
   });
 
-  const [expandedIndex, setExpandedIndex] = useState<number>(0);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const hasAutoAdded = useRef(false);
 
   useEffect(() => {
     if (fields.length === 0 && !hasAutoAdded.current) {
       hasAutoAdded.current = true;
       append(makeEmptyGroup());
-      setExpandedIndex(0);
-    } else if (fields.length > 0 && expandedIndex >= fields.length) {
-      setExpandedIndex(fields.length - 1);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fields.length]);
+  }, []);
+
+  const explicitIndex = expandedId
+    ? fields.findIndex((f) => f.id === expandedId)
+    : -1;
+  const expandedIndex =
+    explicitIndex >= 0
+      ? explicitIndex
+      : fields.length > 0
+      ? fields.length - 1
+      : -1;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -62,16 +70,13 @@ function SkillsForm({ form, sectionIndex }: SectionFormProps) {
     if (!over || active.id === over.id) return;
     const oldIndex = fields.findIndex((f) => f.id === active.id);
     const newIndex = fields.findIndex((f) => f.id === over.id);
-    if (oldIndex >= 0 && newIndex >= 0) {
-      move(oldIndex, newIndex);
-      if (expandedIndex === oldIndex) setExpandedIndex(newIndex);
-      else if (expandedIndex === newIndex) setExpandedIndex(oldIndex);
-    }
+    if (oldIndex >= 0 && newIndex >= 0) move(oldIndex, newIndex);
   }
 
   function handleAdd() {
-    append(makeEmptyGroup());
-    setExpandedIndex(fields.length);
+    const group = makeEmptyGroup();
+    append(group);
+    setExpandedId(group.id);
   }
 
   function handleRemove(index: number) {
@@ -80,11 +85,10 @@ function SkillsForm({ form, sectionIndex }: SectionFormProps) {
       form.setValue(`sections.${sectionIndex}.data.groups.${index}` as const, empty, {
         shouldDirty: true,
       });
-      setExpandedIndex(0);
+      setExpandedId(null);
     } else {
+      if (fields[index]?.id === expandedId) setExpandedId(null);
       remove(index);
-      if (expandedIndex === index) setExpandedIndex(0);
-      else if (expandedIndex > index) setExpandedIndex(expandedIndex - 1);
     }
   }
 
@@ -117,7 +121,9 @@ function SkillsForm({ form, sectionIndex }: SectionFormProps) {
                 groupIndex={index}
                 isExpanded={expandedIndex === index}
                 collapsible={collapsible}
-                onToggle={() => setExpandedIndex(expandedIndex === index ? -1 : index)}
+                onToggle={() =>
+                  setExpandedId(fields[index].id === expandedId ? null : fields[index].id)
+                }
                 onRemove={() => handleRemove(index)}
               />
             ))}
@@ -252,13 +258,18 @@ function SkillGroupCard({
 
       {isExpanded && (
         <>
-          <div className="grid grid-cols-[96px_1fr] items-center border-b border-hairline focus-within:bg-ivory-warm transition-colors">
-            <label className="text-[13px] text-ink-soft px-4 py-3.5 font-medium">Group</label>
+          <div className="grid grid-cols-[96px_1fr_44px] items-center border-b border-hairline focus-within:bg-ivory-warm transition-colors">
+            <label className="text-[13px] text-ink-soft px-4 py-3.5 font-medium">
+              Group
+            </label>
             <input
               {...form.register(`sections.${sectionIndex}.data.groups.${groupIndex}.label`)}
               placeholder="Languages, Frameworks, Tools…"
               className="w-full bg-transparent border-0 text-[14px] text-ink py-3.5 pr-4 outline-none placeholder:text-ink-faint"
             />
+            <div className="border-l border-hairline h-full flex items-center justify-center">
+              <FieldTip text="Name the category (Languages, Frameworks, Tools, Cloud, Design), then list specific recognizable skills — 'React', 'TypeScript', 'Figma' — not generic descriptors. Match ATS keywords from the target job. 6 to 10 items per group, 2-3 groups total." />
+            </div>
           </div>
 
           <div className="p-4">
