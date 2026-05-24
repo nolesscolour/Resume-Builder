@@ -3,6 +3,8 @@
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { Info } from "lucide-react";
 import type { ReactNode } from "react";
+import { useState } from "react";
+import type { ReactNode } from "react";
 
 type FieldRowProps = {
   label: string;
@@ -30,13 +32,19 @@ export function FieldRow({ label, children, required, last, tip }: FieldRowProps
 }
 
 export function FieldTip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <Tooltip.Provider delayDuration={150}>
-      <Tooltip.Root>
+      <Tooltip.Root open={open} onOpenChange={setOpen}>
         <Tooltip.Trigger asChild>
           <button
             type="button"
             aria-label="More info"
+            onClick={(e) => {
+              e.preventDefault();
+              setOpen((v) => !v);
+            }}
             className="text-ink-faint hover:text-ink transition-colors inline-flex items-center"
           >
             <Info className="w-3.5 h-3.5" />
@@ -47,6 +55,7 @@ export function FieldTip({ text }: { text: string }) {
             side="left"
             align="center"
             sideOffset={6}
+            onPointerDownOutside={() => setOpen(false)}
             className="z-50 max-w-[260px] bg-ink text-panel text-[12px] leading-snug font-normal rounded-md px-3 py-2 shadow-[0_8px_24px_-6px_rgba(58,52,30,0.4)]"
           >
             {text}
