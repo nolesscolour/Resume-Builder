@@ -21,10 +21,11 @@ export function TipsModalTrigger() {
       <Dialog.Trigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-2 border border-hairline-strong rounded-sm px-3 py-2 text-[12.5px] font-medium text-ink hover:border-ink-mid hover:bg-ivory-warm transition-colors"
+          aria-label="CV Building Tips"
+          className="inline-flex items-center gap-2 border border-hairline-strong rounded-sm px-2.5 sm:px-3 py-2 text-[12.5px] font-medium text-ink hover:border-ink-mid hover:bg-ivory-warm transition-colors"
         >
           <Lightbulb className="w-3.5 h-3.5" />
-          CV Building Tips
+          <span className="hidden sm:inline">CV Building Tips</span>
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
